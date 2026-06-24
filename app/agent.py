@@ -1,76 +1,78 @@
 # ruff: noqa
-# Copyright 2026 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""CarrierGuard ADK agent.
 
-import datetime
-from zoneinfo import ZoneInfo
+A single LlmAgent that vets a freight carrier end to end:
+  1. calls `lookup_carrier` (served over MCP by mcp_server.server) for live FMCSA data,
+  2. calls the deterministic `assess_carrier` tool to score risk + write the audit record,
+  3. reports APPROVE / REVIEW / REJECT with the findings.
 
-from google.adk.agents import Agent
-from google.adk.apps import App
-from google.adk.models import Gemini
-from google.genai import types
+The LLM orchestrates and explains; the risk decision itself is computed in code
+(see app/tools.py + core/), never by the model.
+"""
 
 import os
-import google.auth
+import sys
 
+import google.auth
+from dotenv import load_dotenv
+from google.adk.agents import LlmAgent
+from google.adk.apps import App
+from google.adk.models import Gemini
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from google.genai import types
+from mcp import StdioServerParameters
+
+from app.tools import assess_carrier
+
+# Load .env (FMCSA_WEBKEY, etc.) for both this process and the MCP subprocess.
+load_dotenv()
+
+# Use Gemini via Vertex with the user's gcloud application-default credentials.
 _, project_id = google.auth.default()
 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def get_weather(query: str) -> str:
-    """Simulates a web search. Use it get information on weather.
+# The FMCSA MCP server, launched as a stdio subprocess (real MCP integration).
+fmcsa_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command=sys.executable,
+            args=["-m", "mcp_server.server"],
+            cwd=_REPO_ROOT,
+            env={**os.environ, "PYTHONPATH": _REPO_ROOT},
+        ),
+        timeout=30,
+    ),
+    tool_filter=["lookup_carrier"],
+)
 
-    Args:
-        query: A string containing the location to get weather information for.
+INSTRUCTION = """You are CarrierGuard, an assistant that vets freight carriers for brokers.
 
-    Returns:
-        A string with the simulated weather information for the queried location.
-    """
-    if "sf" in query.lower() or "san francisco" in query.lower():
-        return "It's 60 degrees and foggy."
-    return "It's 90 degrees and sunny."
+When the user gives you a carrier's MC number (optionally with the carrier name from the rate confirmation):
+1. Call `lookup_carrier` with the MC number to pull the carrier's live FMCSA data.
+2. Call `assess_carrier`, passing the carrier data from step 1 exactly as returned (and the rate-confirmation name if the user gave one).
+3. Report the result clearly:
+   - The decision on its own line in capitals: APPROVE, REVIEW, or REJECT.
+   - The risk score out of 100.
+   - Each finding as a bullet: [SEVERITY] detail.
+   - The audit record id.
 
+Only state facts the tools returned — never invent carrier details. If a tool errors, say so plainly.
+Always end with: "This supports due diligence and is not legal advice."
+"""
 
-def get_current_time(query: str) -> str:
-    """Simulates getting the current time for a city.
-
-    Args:
-        city: The name of the city to get the current time for.
-
-    Returns:
-        A string with the current time information.
-    """
-    if "sf" in query.lower() or "san francisco" in query.lower():
-        tz_identifier = "America/Los_Angeles"
-    else:
-        return f"Sorry, I don't have timezone information for query: {query}."
-
-    tz = ZoneInfo(tz_identifier)
-    now = datetime.datetime.now(tz)
-    return f"The current time for query {query} is {now.strftime('%Y-%m-%d %H:%M:%S %Z%z')}"
-
-
-root_agent = Agent(
-    name="root_agent",
+root_agent = LlmAgent(
+    name="carrierguard",
     model=Gemini(
         model="gemini-flash-latest",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
-    instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
-    tools=[get_weather, get_current_time],
+    instruction=INSTRUCTION,
+    tools=[fmcsa_toolset, assess_carrier],
 )
 
 app = App(
