@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CarrierGuard: vet any carrier</title>
+<meta name="description" content="Vet any US freight carrier against live FMCSA data and watch it for changes. Verdicts computed by CarrierGuard's real policy.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bellefair&family=Open+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#00204C;
+    --navy-2:#0A2E63;
+    --gold:#B89161;
+    --gold-deep:#977343;
+    --gold-soft:#F3ECE0;
+    --ground:#FFFFFF;
+    --alt:#F6F4EF;
+    --paper:#FBFAF6;
+    --ink:#2C2C2C;
+    --muted:#6B6B6B;
+    --muted-2:#8A8578;
+    --line:#E4E0D8;
+    --line-2:#D6D0C4;
+    --ok:#1F7A46;
+    --ok-deep:#176038;
+    --ok-soft:#E7F1EA;
+    --warn:#B7791F;
+    --warn-soft:#F6ECD6;
+    --bad:#A0291F;
+    --bad-deep:#86231A;
+    --bad-soft:#F7E8E5;
+    --font-serif:'Bellefair', Georgia, 'Times New Roman', serif;
+    --font-sans:'Open Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --maxw:1120px;
+    --r:4px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--font-sans);font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,32px)}
+  a{color:var(--navy-2)}
+  a:hover{color:var(--gold-deep)}
+
+  .topbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:18px 0;border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--font-serif);font-size:1.5rem;letter-spacing:.01em;color:var(--navy)}
+  .brand svg{display:block}
+  .brand .g{color:var(--gold)}
+  .topbar .spacer{flex:1}
+  .tag{font-size:.66rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line-2);border-radius:999px;padding:5px 11px}
+  .tag.demo{color:#fff;background:var(--gold);border-color:var(--gold)}
+  .tag .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:middle;animation:pulse 2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .hero{padding:clamp(36px,6vw,64px) 0 clamp(20px,3vw,30px)}
+  .eyebrow{font-size:.74rem;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:var(--gold-deep);margin:0 0 16px;display:flex;align-items:center;gap:12px}
+  .eyebrow::after{content:"";height:1px;width:54px;background:var(--gold);opacity:.6}
+  h1{font-family:var(--font-serif);font-size:clamp(2.4rem,5.2vw,3.9rem);line-height:1.02;letter-spacing:.005em;font-weight:400;color:var(--navy);margin:0 0 18px;text-wrap:balance;max-width:20ch}
+  .lede{font-size:clamp(1.02rem,1.5vw,1.16rem);color:#454545;margin:0;max-width:62ch}
+  .lede em{color:var(--navy);font-style:italic}
+
+  .tabs{display:flex;gap:4px;margin:32px 0 0;border-bottom:2px solid var(--line)}
+  .tab{appearance:none;background:none;border:0;cursor:pointer;color:var(--muted);font-family:var(--font-sans);font-weight:600;font-size:.86rem;letter-spacing:.02em;padding:13px 16px;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:8px}
+  .tab:hover{color:var(--navy)}
+  .tab[aria-selected="true"]{color:var(--navy);border-bottom-color:var(--gold)}
+  .tab .mini{font-size:.58rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-deep);border:1px solid var(--line-2);border-radius:999px;padding:2px 7px}
+  .tab:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:3px}
+
+  .panel{padding:28px 0 10px}
+  .panel[hidden]{display:none}
+
+  .console{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:26px;align-items:start}
+  @media(max-width:760px){.console{grid-template-columns:1fr}}
+
+  .control{background:var(--alt);border:1px solid var(--line);border-radius:var(--r);padding:22px}
+  .control label{display:block;font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+  .inputrow{display:flex;gap:8px}
+  input#mc{flex:1;min-width:0;background:#fff;border:1px solid var(--line-2);color:var(--navy);font-family:var(--font-sans);font-size:1rem;font-weight:600;letter-spacing:.02em;padding:11px 13px;border-radius:var(--r);font-variant-numeric:tabular-nums}
+  input#mc::placeholder{color:var(--muted-2);font-weight:400}
+  .btn{appearance:none;cursor:pointer;border:1px solid var(--gold);border-radius:var(--r);font-family:var(--font-sans);font-weight:600;font-size:.92rem;letter-spacing:.02em;padding:11px 18px;white-space:nowrap;background:var(--gold);color:#fff;transition:background .15s ease,border-color .15s ease}
+  .btn:hover{background:var(--gold-deep);border-color:var(--gold-deep)}
+  .btn[disabled]{opacity:.55;cursor:progress}
+  .hint{font-size:.84rem;color:var(--muted);margin:18px 0 9px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{appearance:none;cursor:pointer;background:#fff;border:1px solid var(--line-2);color:var(--navy);font-family:var(--font-sans);font-size:.78rem;font-weight:600;padding:8px 12px;border-radius:var(--r);transition:border-color .15s,color .15s}
+  .chip:hover{border-color:var(--gold);color:var(--gold-deep)}
+  .chip b{font-weight:700}
+  .how{list-style:none;margin:20px 0 0;padding:18px 0 0;border-top:1px solid var(--line);display:grid;gap:11px}
+  .how li{font-size:.82rem;color:var(--muted);display:flex;gap:11px;align-items:flex-start;line-height:1.45}
+  .how li svg{flex:none;margin-top:2px;color:var(--gold)}
+
+  .result{min-height:360px;display:flex;flex-direction:column}
+  .empty{flex:1;border:1px dashed var(--line-2);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--muted);padding:34px;gap:11px}
+  .empty .big{font-family:var(--font-serif);font-size:1.35rem;color:var(--navy)}
+  .empty svg{color:var(--line-2)}
+
+  .working{display:grid;gap:9px;padding:12px 4px;font-size:.9rem;color:var(--muted)}
+  .work-line{opacity:0;transform:translateY(3px);transition:opacity .25s ease,transform .25s ease;display:flex;gap:11px;align-items:baseline}
+  .work-line.show{opacity:1;transform:none}
+  .work-line .ar{color:var(--gold);font-weight:700}
+
+  .record{background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:var(--r);padding:clamp(22px,3vw,32px);position:relative;overflow:hidden;box-shadow:0 16px 36px -26px rgba(0,32,76,.5);opacity:0;transform:translateY(8px);animation:rise .4s ease forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+  .record::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+  .record.approve::before{background:var(--ok)}
+  .record.reject::before{background:var(--bad)}
+  .record.review::before{background:var(--warn)}
+
+  .rec-title{font-size:.72rem;font-weight:700;letter-spacing:.22em;color:var(--gold-deep);text-transform:uppercase}
+  .rec-meta{font-size:.8rem;color:var(--muted);margin-top:5px;font-variant-numeric:tabular-nums}
+  .rec-carrier{font-family:var(--font-serif);font-size:1.7rem;letter-spacing:.01em;color:var(--navy);margin:12px 0 2px;line-height:1.1;text-wrap:balance}
+  .rec-dba{font-size:.78rem;color:var(--muted)}
+
+  .verdict{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin:20px 0 8px}
+  .stamp{font-family:var(--font-serif);font-size:clamp(1.5rem,3vw,2.1rem);letter-spacing:.16em;padding:7px 20px;border:2px solid currentColor;border-radius:var(--r);transform:rotate(-2.5deg);text-transform:uppercase;line-height:1;position:relative}
+  .stamp::after{content:"";position:absolute;inset:3px;border:1px solid currentColor;border-radius:2px;opacity:.5}
+  .stamp.approve{color:var(--ok)}
+  .stamp.reject{color:var(--bad)}
+  .stamp.review{color:var(--warn)}
+  .verdict-score{font-size:.84rem;color:var(--muted);font-variant-numeric:tabular-nums}
+  .verdict-score b{color:var(--navy);font-weight:700}
+
+  .facts{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin:18px 0 0}
+  @media(max-width:520px){.facts{grid-template-columns:1fr}}
+  .fact{background:var(--paper);padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+  .fact dt{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .fact dd{margin:0;font-size:.92rem;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:8px}
+  .fact dd .i{font-weight:700}
+  .i.good{color:var(--ok)} .i.bad{color:var(--bad)} .i.na{color:var(--muted)}
+
+  .findings{margin-top:20px}
+  .findings-title{font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:11px}
+  .sigs{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+  .sig{display:flex;gap:12px;align-items:flex-start;font-size:.92rem;line-height:1.45}
+  .sev{font-size:.6rem;font-weight:700;letter-spacing:.1em;padding:3px 8px;border-radius:3px;flex:none;margin-top:2px}
+  .sev.high{background:var(--bad-soft);color:var(--bad-deep)}
+  .sev.medium{background:var(--warn-soft);color:var(--warn)}
+  .sig.clean{color:var(--ok-deep);font-weight:600}
+
+  .rec-foot{margin-top:22px;padding-top:15px;border-top:1px solid var(--line)}
+  .rec-id{font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+  .rec-id .lock{color:var(--ok)}
+  .disclaimer{font-size:.76rem;color:var(--muted);margin:9px 0 0;font-style:italic}
+
+  .watch-intro{color:#454545;max-width:64ch;margin:0 0 22px}
+  .watch-intro .note{color:var(--muted);font-size:.88rem;font-style:italic}
+  .watch-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .watch-bar h3{font-size:.74rem;font-weight:700;letter-spacing:.1em;color:var(--muted);margin:0;text-transform:uppercase}
+  .wlist{border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+  .wrow{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:12px;padding:15px 16px;align-items:center;border-top:1px solid var(--line)}
+  .wrow:first-child{border-top:0}
+  .wrow.head{background:var(--alt);color:var(--muted);font-size:.64rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+  .wrow .cn{font-weight:700;color:var(--navy)}
+  .wrow .mc{font-size:.76rem;color:var(--muted);font-variant-numeric:tabular-nums}
+  @media(max-width:560px){.wrow{grid-template-columns:1fr 1fr}.wrow .col3{display:none}}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:.7rem;font-weight:600;letter-spacing:.04em;padding:4px 10px;border-radius:999px;border:1px solid}
+  .pill.ok{color:var(--ok-deep);border-color:#bfddc9;background:var(--ok-soft)}
+  .pill.warn{color:var(--warn);border-color:#e6d2a6;background:var(--warn-soft)}
+  .pill.pending{color:var(--muted);border-color:var(--line-2);background:#fff}
+  .pill .d{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+  #alerts{margin-top:20px;display:grid;gap:10px}
+  .alert-sum{font-size:.86rem;font-weight:600;color:var(--bad-deep);display:flex;align-items:center;gap:9px}
+  .alert{display:flex;gap:13px;align-items:flex-start;border:1px solid #e7c9c4;background:var(--bad-soft);border-left:3px solid var(--bad);border-radius:var(--r);padding:14px 16px;opacity:0;transform:translateX(-5px);transition:opacity .3s ease,transform .3s ease}
+  .alert.show{opacity:1;transform:none}
+  .alert .code{font-size:.6rem;font-weight:700;letter-spacing:.08em;color:var(--bad-deep);background:#fff;border:1px solid #e7c9c4;border-radius:3px;padding:3px 8px;flex:none;margin-top:1px;text-transform:uppercase}
+  .alert .who{font-weight:700;font-size:.9rem;color:var(--navy)}
+  .alert .det{font-size:.86rem;color:#6a4a46}
+
+  .watch-add{background:var(--alt);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;margin-bottom:22px}
+  .watch-add label{display:block;font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+  .watch-add .inputrow{max-width:440px}
+  .watch-err{color:var(--bad-deep);font-size:.82rem;margin-top:10px;min-height:1.1em}
+  .watch-note{font-size:.72rem;color:var(--muted);font-style:italic}
+  .wlist .wrow{grid-template-columns:1.7fr auto auto}
+  .wremove{appearance:none;cursor:pointer;background:none;border:0;color:var(--muted);font-size:1.2rem;line-height:1;padding:2px 9px;border-radius:4px}
+  .wremove:hover{color:var(--bad);background:var(--bad-soft)}
+  .pill.bad{color:var(--bad-deep);border-color:#e7c9c4;background:var(--bad-soft)}
+  .watch-example{margin-top:28px;border-top:1px solid var(--line);padding-top:22px}
+  .ex-label{font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-deep);margin-bottom:7px}
+  .ex-sub{font-size:.86rem;color:var(--muted);margin:0 0 14px}
+  .alert-list{display:grid;gap:10px}
+  @media(max-width:560px){.wlist .wrow{grid-template-columns:1fr auto auto}}
+
+  footer{margin-top:50px;border-top:1px solid var(--line);padding:24px 0 48px;color:var(--muted);font-size:.82rem;line-height:1.65}
+  footer .ftgrid{display:flex;gap:22px;flex-wrap:wrap;justify-content:space-between}
+  footer code{font-family:var(--font-sans);font-weight:700;color:var(--navy);letter-spacing:.02em}
+
+  @media (prefers-reduced-motion: reduce){
+    .record{animation:none;opacity:1;transform:none}
+    .work-line,.alert{transition:none;opacity:1;transform:none}
+    .tag .dot{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 2.5 4 5.2v6.2c0 4.6 3.2 8 8 9.9 4.8-1.9 8-5.3 8-9.9V5.2L12 2.5Z" fill="#00204C" stroke="#B89161" stroke-width="1.3"/>
+        <path d="m8.4 12.2 2.6 2.6 4.6-5.1" stroke="#B89161" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Carrier<span class="g">Guard</span></span>
+    </div>
+    <div class="spacer"></div>
+    <span class="tag"><span class="dot"></span>Live &middot; FMCSA QCMobile</span>
+    <span class="tag demo">Vet any carrier</span>
+  </header>
+
+  <section class="hero">
+    <p class="eyebrow">Freight carrier due diligence</p>
+    <h1>Know who you&rsquo;re hiring, before the load and after.</h1>
+    <p class="lede">Since <em>Montgomery v. Caribe Transport</em> (May 2026), a freight broker can be sued for the carrier they pick. CarrierGuard vets <em>any</em> carrier against live FMCSA data and keeps watching it for as long as it hauls.</p>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="CarrierGuard modes">
+    <button class="tab" role="tab" id="tab-vet" aria-selected="true" aria-controls="vet" data-tab="vet">Vet a carrier</button>
+    <button class="tab" role="tab" id="tab-watch" aria-selected="false" aria-controls="watch" data-tab="watch">Watch <span class="mini">nightly</span></button>
+  </nav>
+
+  <section class="panel" id="vet" role="tabpanel" aria-labelledby="tab-vet">
+    <div class="console">
+      <div class="control">
+        <label for="mc">Carrier MC number</label>
+        <div class="inputrow">
+          <input id="mc" inputmode="numeric" autocomplete="off" placeholder="any MC number, e.g. 107478" aria-label="Carrier MC number" />
+          <button class="btn" id="run">Run vetting</button>
+        </div>
+        <p class="hint">Type any US carrier&rsquo;s MC number, or try one of these:</p>
+        <div class="chips">
+          <button class="chip" data-mc="107478">MC&nbsp;107478 &middot; <b>Old&nbsp;Dominion</b></button>
+          <button class="chip" data-mc="97275">MC&nbsp;97275 &middot; <b>Estes</b></button>
+          <button class="chip" data-mc="135797">MC&nbsp;135797 &middot; <b>J.B.&nbsp;Hunt</b></button>
+          <button class="chip" data-mc="87511">MC&nbsp;87511 &middot; <b>Saia</b></button>
+          <button class="chip" data-mc="1217040">MC&nbsp;1217040 &middot; <b>B&nbsp;Swift</b></button>
+        </div>
+        <ul class="how">
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Pulls that carrier&rsquo;s live record from the FMCSA QCMobile API</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 8l7-5 7 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Scores it with a fixed, versioned policy, not the model</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 12l3 3 5-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Writes a dated record to an append-only audit log</li>
+        </ul>
+      </div>
+
+      <div class="result" id="result">
+        <div class="empty" id="empty">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="big">Enter an MC number to run a vetting</div>
+          <div style="font-size:.86rem">The live decision and audit record appear here.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="watch" role="tabpanel" aria-labelledby="tab-watch" hidden>
+    <p class="watch-intro">Add the carriers you&rsquo;ve booked. Each night CarrierGuard re-checks every one and alerts you the moment its status worsens: authority revoked, insurance lapsed, out-of-service, or a safety downgrade. A carrier that&rsquo;s clean at booking can go bad weeks later; this is what catches it.</p>
+
+    <div class="watch-add">
+      <label for="wmc">Add a carrier to your watchlist</label>
+      <div class="inputrow">
+        <input id="wmc" inputmode="numeric" autocomplete="off" placeholder="any MC number, e.g. 80806" aria-label="MC number to watch" />
+        <button class="btn" id="addwatch">Add</button>
+      </div>
+      <div class="watch-err" id="watch-err" role="alert"></div>
+    </div>
+
+    <div class="watch-bar">
+      <h3>Watchlist &middot; <span id="wcount">0 carriers</span></h3>
+      <span class="watch-note">Re-checked every night</span>
+    </div>
+    <div class="wlist">
+      <div class="wrow head"><div>Carrier</div><div>Status now</div><div></div></div>
+      <div id="wrows"></div>
+    </div>
+
+    <div class="watch-example">
+      <div class="ex-label">Example: an overnight change alert</div>
+      <p class="ex-sub">If a watched carrier&rsquo;s status worsens between nightly checks, you get an alert like this:</p>
+      <div id="alerts" class="alert-list"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="ftgrid">
+      <div style="max-width:64ch">
+        Live demo. Every check queries the real FMCSA QCMobile API for that MC number and scores it with CarrierGuard&rsquo;s policy (v1). Nothing is hardcoded.
+      </div>
+      <div>
+        Source &amp; agent: <a href="https://github.com/ognjenmilev/carrierguard" target="_blank" rel="noopener">github.com/ognjenmilev/carrierguard</a><br>
+        <code>CC&nbsp;BY&nbsp;4.0</code> &middot; Informational, not legal advice.
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var WEIGHTS = {HIGH:50, MEDIUM:20, LOW:5};
+  var REJECT_SCORE = 50, REVIEW_SCORE = 20;
+
+  function detectFraud(c){
+    var s = [];
+    if(String(c.authority_status||"").toUpperCase() !== "ACTIVE")
+      s.push({sev:"HIGH", detail:"Operating authority is not active (status: "+c.authority_status+")."});
+    if(c.out_of_service)
+      s.push({sev:"HIGH", detail:"Carrier is under an out-of-service order."});
+    if(c.insurance_required && !c.insurance_on_file)
+      s.push({sev:"HIGH", detail:"No BIPD insurance on file though insurance is required."});
+    var r = String(c.safety_rating||"").toUpperCase();
+    if(r==="UNSATISFACTORY") s.push({sev:"HIGH", detail:"FMCSA safety rating is Unsatisfactory."});
+    else if(r==="CONDITIONAL") s.push({sev:"MEDIUM", detail:"FMCSA safety rating is Conditional."});
+    return s;
+  }
+  function score(signals){
+    var sc = Math.min(100, signals.reduce(function(a,s){return a+(WEIGHTS[s.sev]||0);},0));
+    var hasHigh = signals.some(function(s){return s.sev==="HIGH";});
+    var decision = (hasHigh || sc>=REJECT_SCORE) ? "REJECT" : (sc>=REVIEW_SCORE ? "REVIEW" : "APPROVE");
+    return {score:sc, decision:decision, signals:signals};
+  }
+
+  function money(thousands){ return "$" + (Number(thousands)*1000).toLocaleString("en-US"); }
+  function esc(x){ return String(x==null?"":x).replace(/[&<>]/g,function(m){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[m];}); }
+  function stamp(){
+    var d = new Date(), pad=function(n){return (n<10?"0":"")+n;};
+    var off=-d.getTimezoneOffset();
+    return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes())+" UTC"+(off<0?"-":"+")+pad(Math.abs(off)/60);
+  }
+
+  function recordHTML(c){
+    var r = score(detectFraud(c));
+    var dec = r.decision.toLowerCase();
+    var rated = c.safety_rating && String(c.safety_rating).trim();
+    var ins = c.insurance_on_file ? money(c.bipd_on_file)+" on file"
+              : (c.bipd_required ? "none on file (≥ "+money(c.bipd_required)+" required)" : "none on file");
+    var ratingLabel = rated ? (c.safety_rating.charAt(0)+c.safety_rating.slice(1).toLowerCase()) : "Not rated";
+    var facts = [
+      ["Operating authority", c.authority_status||"Unknown", (String(c.authority_status).toUpperCase()==="ACTIVE")?"good":"bad"],
+      ["BIPD insurance", ins, c.insurance_on_file?"good":"bad"],
+      ["FMCSA safety rating", ratingLabel, rated ? (c.safety_rating.toUpperCase()==="SATISFACTORY"?"good":"bad") : "na"],
+      ["Out-of-service", c.out_of_service ? ("Yes · since "+String(c.oos_date||"").slice(0,10)) : "No", c.out_of_service?"bad":"good"]
+    ];
+    var icon = {good:"✓", bad:"✗", na:"·"};
+    var factsHTML = facts.map(function(f){
+      return '<div class="fact"><dt>'+f[0]+'</dt><dd><span class="i '+f[2]+'">'+icon[f[2]]+'</span>'+esc(f[1])+'</dd></div>';
+    }).join("");
+    var findings = r.signals.length
+      ? '<ul class="sigs">'+r.signals.map(function(s){
+          return '<li class="sig"><span class="sev '+s.sev.toLowerCase()+'">'+s.sev+'</span><span>'+esc(s.detail)+'</span></li>';
+        }).join("")+'</ul>'
+      : '<ul class="sigs"><li class="sig clean">None. Authority active, insurance on file, no adverse flags.</li></ul>';
+    var recId = "CG-"+c.mc+"-"+stamp().slice(0,10).replace(/-/g,"");
+    var meta = "MC "+esc(c.mc)+" · DOT "+esc(c.dot||"n/a")+(c.domicile?(" · "+esc(c.domicile)):"")+" · "+stamp();
+    return ''+
+    '<article class="record '+dec+'" aria-live="polite">'+
+      '<div class="rec-title">Carrier Vetting Record</div>'+
+      '<div class="rec-meta">'+meta+'</div>'+
+      '<div class="rec-carrier">'+esc(c.legal||"Unknown carrier")+'</div>'+
+      (c.dba?'<div class="rec-dba">dba '+esc(c.dba)+'</div>':'')+
+      '<div class="verdict">'+
+        '<span class="stamp '+dec+'">'+r.decision+'</span>'+
+        '<span class="verdict-score">risk score <b>'+r.score+'/100</b> &middot; policy v1</span>'+
+      '</div>'+
+      '<dl class="facts">'+factsHTML+'</dl>'+
+      '<div class="findings"><div class="findings-title">Findings</div>'+findings+'</div>'+
+      '<div class="rec-foot">'+
+        '<div class="rec-id"><span class="lock">●</span> Record '+recId+' &middot; written to append-only audit log</div>'+
+        '<p class="disclaimer">This record supports a broker&rsquo;s carrier due-diligence process. It is informational and is not legal advice.</p>'+
+      '</div>'+
+    '</article>';
+  }
+
+  function errHTML(mc, msg){
+    return '<div class="empty"><svg width="38" height="38" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'+
+      '<div class="big">MC '+esc(mc)+'</div>'+
+      '<div style="font-size:.88rem;max-width:36ch;color:#555">'+esc(msg)+'</div></div>';
+  }
+
+  var resultEl = document.getElementById("result");
+  var inputEl = document.getElementById("mc");
+  var runBtn = document.getElementById("run");
+
+  function vetMC(mc){
+    mc = String(mc||"").toUpperCase().replace(/^MC/,"").replace(/[^0-9]/g,"");
+    if(!mc){ inputEl.focus(); return; }
+    inputEl.value = mc;
+    runBtn.disabled = true;
+    var lines = [
+      "Querying FMCSA QCMobile for MC "+mc+"…",
+      "Running fraud / risk heuristics…",
+      "Scoring against policy v1…",
+      "Writing dated record to audit log…"
+    ];
+    var fetchDone=false, linesDone=false, payload=null, failed=null;
+    function finish(){
+      if(!fetchDone || !linesDone) return;
+      resultEl.innerHTML = failed ? errHTML(mc, failed) : recordHTML(payload);
+      runBtn.disabled = false;
+    }
+    if(reduce){
+      resultEl.innerHTML = '<div class="working"><div class="work-line show"><span class="ar">→</span> Querying FMCSA for MC '+esc(mc)+'…</div></div>';
+      linesDone = true;
+    } else {
+      resultEl.innerHTML = '<div class="working">'+lines.map(function(l,i){
+        return '<div class="work-line" id="wl'+i+'"><span class="ar">→</span> <span>'+esc(l)+'</span></div>';
+      }).join("")+'</div>';
+      lines.forEach(function(l,i){ setTimeout(function(){ var el=document.getElementById("wl"+i); if(el) el.classList.add("show"); }, 150+i*300); });
+      setTimeout(function(){ linesDone=true; finish(); }, 150+lines.length*300+250);
+    }
+    fetch("/api/vet?mc="+encodeURIComponent(mc), {headers:{"Accept":"application/json"}})
+      .then(function(resp){ return resp.json().then(function(j){ return {ok:resp.ok, status:resp.status, j:j}; }); })
+      .then(function(res){
+        if(res.ok && res.j && !res.j.error){ payload = res.j; }
+        else { failed = (res.j && res.j.error) || ("FMCSA lookup failed (HTTP "+res.status+")."); }
+      })
+      .catch(function(){ failed = "Network error reaching the vetting service. Try again."; })
+      .then(function(){ fetchDone=true; finish(); });
+  }
+
+  function run(){ vetMC(inputEl.value); }
+  runBtn.addEventListener("click", run);
+  inputEl.addEventListener("keydown", function(e){ if(e.key==="Enter") run(); });
+  Array.prototype.forEach.call(document.querySelectorAll(".chip"), function(ch){
+    ch.addEventListener("click", function(){ vetMC(ch.getAttribute("data-mc")); });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(tab){
+    tab.addEventListener("click", function(){
+      Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(t){
+        var on = t===tab; t.setAttribute("aria-selected", on?"true":"false");
+        document.getElementById(t.getAttribute("data-tab")).hidden = !on;
+      });
+      if(tab.getAttribute("data-tab") === "watch"){ loadWatchSeeds(); }
+    });
+  });
+
+  // ---- Watch: interactive watchlist with live current status ----
+  var SEED_WATCH = ["107478", "1217040"];
+  var watchlist = [];
+  var watchLoaded = false;
+  var wmcEl = document.getElementById("wmc");
+  var wrowsEl = document.getElementById("wrows");
+  var wcountEl = document.getElementById("wcount");
+  var werrEl = document.getElementById("watch-err");
+
+  function statusPill(decision, loading){
+    if(loading) return '<span class="pill pending"><span class="d"></span>Checking…</span>';
+    if(decision==="APPROVE") return '<span class="pill ok"><span class="d"></span>Clear</span>';
+    if(decision==="REVIEW") return '<span class="pill warn"><span class="d"></span>Review</span>';
+    if(decision==="REJECT") return '<span class="pill bad"><span class="d"></span>Flagged</span>';
+    return '<span class="pill pending"><span class="d"></span>n/a</span>';
+  }
+  function renderWatch(){
+    wcountEl.textContent = watchlist.length + (watchlist.length === 1 ? " carrier" : " carriers");
+    wrowsEl.innerHTML = watchlist.map(function(w, i){
+      return '<div class="wrow">'+
+        '<div><div class="cn">'+esc(w.legal || ("MC "+w.mc))+'</div><div class="mc">MC '+esc(w.mc)+'</div></div>'+
+        '<div>'+statusPill(w.decision, w.loading)+'</div>'+
+        '<div style="text-align:right"><button class="wremove" data-i="'+i+'" aria-label="Remove from watchlist" title="Remove">&times;</button></div>'+
+      '</div>';
+    }).join("");
+  }
+  function watchErr(msg){
+    werrEl.textContent = msg || "";
+    if(msg){ setTimeout(function(){ if(werrEl.textContent === msg) werrEl.textContent = ""; }, 5000); }
+  }
+  function addToWatch(mc){
+    mc = String(mc||"").toUpperCase().replace(/^MC/,"").replace(/[^0-9]/g,"");
+    if(!mc){ return; }
+    if(watchlist.some(function(w){ return w.mc === mc; })){ watchErr("MC "+mc+" is already on the watchlist."); return; }
+    var entry = {mc:mc, legal:null, decision:null, loading:true};
+    watchlist.push(entry); renderWatch();
+    fetch("/api/vet?mc="+encodeURIComponent(mc), {headers:{"Accept":"application/json"}})
+      .then(function(resp){ return resp.json().then(function(j){ return {ok:resp.ok, j:j}; }); })
+      .then(function(res){
+        if(res.ok && res.j && !res.j.error){ entry.legal = res.j.legal; entry.decision = res.j.decision; entry.loading = false; }
+        else { watchlist = watchlist.filter(function(w){ return w !== entry; }); watchErr((res.j && res.j.error) || "Lookup failed."); }
+        renderWatch();
+      })
+      .catch(function(){ watchlist = watchlist.filter(function(w){ return w !== entry; }); watchErr("Network error reaching the service."); renderWatch(); });
+  }
+  wrowsEl.addEventListener("click", function(e){
+    var b = e.target && e.target.closest ? e.target.closest(".wremove") : null;
+    if(b){ var i = parseInt(b.getAttribute("data-i"), 10); if(i >= 0){ watchlist.splice(i, 1); renderWatch(); } }
+  });
+  document.getElementById("addwatch").addEventListener("click", function(){ addToWatch(wmcEl.value); wmcEl.value = ""; wmcEl.focus(); });
+  wmcEl.addEventListener("keydown", function(e){ if(e.key === "Enter"){ addToWatch(wmcEl.value); wmcEl.value = ""; } });
+
+  function loadWatchSeeds(){
+    if(watchLoaded){ return; }
+    watchLoaded = true;
+    SEED_WATCH.forEach(function(mc){ addToWatch(mc); });
+  }
+
+  // Example overnight alert (illustration of what a nightly change alert looks like).
+  var watchAlerts = [
+    ["Authority lost", "Operating authority changed from ACTIVE to INACTIVE."],
+    ["Insurance lapsed", "BIPD insurance is no longer on file."],
+    ["Out of service", "Carrier was placed out of service."]
+  ];
+  document.getElementById("alerts").innerHTML = watchAlerts.map(function(a){
+    return '<div class="alert show"><span class="code">'+esc(a[0])+'</span><div><div class="who">B Swift Transportation &middot; MC 1217040</div><div class="det">'+esc(a[1])+'</div></div></div>';
+  }).join("");
+})();
+</script>
+</body>
+</html>
