@@ -185,6 +185,7 @@
   .ex-label{font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-deep);margin-bottom:7px}
   .ex-sub{font-size:.86rem;color:var(--muted);margin:0 0 14px}
   .alert-list{display:grid;gap:10px}
+  .ex-none{font-size:.86rem;color:var(--muted);font-style:italic;margin:0}
   @media(max-width:560px){.wlist .wrow{grid-template-columns:1fr auto auto}}
 
   footer{margin-top:50px;border-top:1px solid var(--line);padding:24px 0 48px;color:var(--muted);font-size:.82rem;line-height:1.65}
@@ -279,8 +280,8 @@
     </div>
 
     <div class="watch-example">
-      <div class="ex-label">Example: an overnight change alert</div>
-      <p class="ex-sub">If a watched carrier&rsquo;s status worsens between nightly checks, you get an alert like this:</p>
+      <div class="ex-label">Open alerts</div>
+      <p class="ex-sub">CarrierGuard flags any watched carrier whose record is bad right now, and re-checks every night so you hear about it the moment one worsens.</p>
       <div id="alerts" class="alert-list"></div>
     </div>
   </section>
@@ -441,7 +442,7 @@
     });
   });
 
-  // ---- Watch: interactive watchlist with live current status ----
+  // ---- Watch: interactive watchlist + live alerts (all from real FMCSA data) ----
   var SEED_WATCH = ["107478", "1217040"];
   var watchlist = [];
   var watchLoaded = false;
@@ -449,6 +450,18 @@
   var wrowsEl = document.getElementById("wrows");
   var wcountEl = document.getElementById("wcount");
   var werrEl = document.getElementById("watch-err");
+  var alertsEl = document.getElementById("alerts");
+
+  var CODE_LABEL = {
+    AUTHORITY_INACTIVE: "Authority",
+    OUT_OF_SERVICE: "Out of service",
+    NO_INSURANCE: "Insurance",
+    UNSATISFACTORY_SAFETY: "Safety",
+    CONDITIONAL_SAFETY: "Safety",
+    AUTHORITY_TOO_NEW: "New authority",
+    NAME_MISMATCH: "Name mismatch",
+    ADDRESS_CMRA: "Address"
+  };
 
   function statusPill(decision, loading){
     if(loading) return '<span class="pill pending"><span class="d"></span>Checking…</span>';
@@ -456,6 +469,19 @@
     if(decision==="REVIEW") return '<span class="pill warn"><span class="d"></span>Review</span>';
     if(decision==="REJECT") return '<span class="pill bad"><span class="d"></span>Flagged</span>';
     return '<span class="pill pending"><span class="d"></span>n/a</span>';
+  }
+  function renderAlerts(){
+    var items = [];
+    watchlist.forEach(function(w){
+      if(w.signals && w.signals.length){
+        w.signals.forEach(function(s){
+          items.push('<div class="alert show"><span class="code">'+esc(CODE_LABEL[s.code] || s.sev)+'</span><div><div class="who">'+esc(w.legal || ("MC "+w.mc))+' &middot; MC '+esc(w.mc)+'</div><div class="det">'+esc(s.detail)+'</div></div></div>');
+        });
+      }
+    });
+    alertsEl.innerHTML = items.length
+      ? items.join("")
+      : '<p class="ex-none">No open alerts. Every watched carrier is currently clear, and CarrierGuard keeps re-checking them each night.</p>';
   }
   function renderWatch(){
     wcountEl.textContent = watchlist.length + (watchlist.length === 1 ? " carrier" : " carriers");
@@ -466,6 +492,7 @@
         '<div style="text-align:right"><button class="wremove" data-i="'+i+'" aria-label="Remove from watchlist" title="Remove">&times;</button></div>'+
       '</div>';
     }).join("");
+    renderAlerts();
   }
   function watchErr(msg){
     werrEl.textContent = msg || "";
@@ -475,12 +502,12 @@
     mc = String(mc||"").toUpperCase().replace(/^MC/,"").replace(/[^0-9]/g,"");
     if(!mc){ return; }
     if(watchlist.some(function(w){ return w.mc === mc; })){ watchErr("MC "+mc+" is already on the watchlist."); return; }
-    var entry = {mc:mc, legal:null, decision:null, loading:true};
+    var entry = {mc:mc, legal:null, decision:null, signals:null, loading:true};
     watchlist.push(entry); renderWatch();
     fetch("/api/vet?mc="+encodeURIComponent(mc), {headers:{"Accept":"application/json"}})
       .then(function(resp){ return resp.json().then(function(j){ return {ok:resp.ok, j:j}; }); })
       .then(function(res){
-        if(res.ok && res.j && !res.j.error){ entry.legal = res.j.legal; entry.decision = res.j.decision; entry.loading = false; }
+        if(res.ok && res.j && !res.j.error){ entry.legal = res.j.legal; entry.decision = res.j.decision; entry.signals = res.j.signals || []; entry.loading = false; }
         else { watchlist = watchlist.filter(function(w){ return w !== entry; }); watchErr((res.j && res.j.error) || "Lookup failed."); }
         renderWatch();
       })
@@ -498,16 +525,7 @@
     watchLoaded = true;
     SEED_WATCH.forEach(function(mc){ addToWatch(mc); });
   }
-
-  // Example overnight alert (illustration of what a nightly change alert looks like).
-  var watchAlerts = [
-    ["Authority lost", "Operating authority changed from ACTIVE to INACTIVE."],
-    ["Insurance lapsed", "BIPD insurance is no longer on file."],
-    ["Out of service", "Carrier was placed out of service."]
-  ];
-  document.getElementById("alerts").innerHTML = watchAlerts.map(function(a){
-    return '<div class="alert show"><span class="code">'+esc(a[0])+'</span><div><div class="who">B Swift Transportation &middot; MC 1217040</div><div class="det">'+esc(a[1])+'</div></div></div>';
-  }).join("");
+  renderAlerts();
 })();
 </script>
 </body>
