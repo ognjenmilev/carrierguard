@@ -1,6 +1,6 @@
 # 🚛 CarrierGuard
 
-**An AI agent that vets freight carriers against live FMCSA data — and keeps watching them after you book.**
+**An AI agent that helps freight brokers check carriers against live FMCSA data, and keeps an eye on them after the load is booked.**
 
 Built for the Google × Kaggle *AI Agents Intensive (Vibe Coding)* capstone · Track: **Agents for Business**
 
