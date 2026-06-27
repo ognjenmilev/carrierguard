@@ -10,14 +10,14 @@ Built for the Google × Kaggle *AI Agents Intensive (Vibe Coding)* capstone · T
 
 ## The problem
 
-On **May 14, 2026**, the U.S. Supreme Court ruled in *Montgomery v. Caribe Transport* that freight brokers **can be sued for negligent hiring** when a carrier they select causes a crash. Overnight, ~17,000 small U.S. freight brokerages became liable for *who they hire to haul freight* — during an active freight-fraud wave (double-brokering, identity theft).
+On May 14, 2026, the U.S. Supreme Court ruled in *Montgomery v. Caribe Transport II* that freight brokers can be sued under state law for negligently hiring an unsafe carrier. The decision stripped away the federal preemption defense brokers had long used to get these claims dismissed. Overnight, roughly 17,000 small U.S. freight brokerages became exposed for who they hire to haul freight, right in the middle of a freight-fraud wave (double-brokering, identity theft).
 
-Brokers' counsel now say every broker needs a **written protocol** for onboarding *and continuously monitoring* each carrier. But the existing tools are carrier-flagging databases, not a broker's own assistant — and per counsel, **no single tool** does end-to-end vetting **+** continuous re-verification **+** a defensible decision trail. That gap is CarrierGuard.
+Brokers' counsel now say every broker needs a written protocol for onboarding each carrier and then monitoring it for as long as it hauls. But the existing tools are carrier-flagging databases, not a broker's own assistant. And per counsel, no single tool does end-to-end vetting, continuous re-verification, and a defensible decision trail in one place. That gap is CarrierGuard.
 
 ## What it does
 
-- **Vet (on-demand)** — give it a carrier's MC number; it pulls the carrier's live FMCSA record, scores the risk, and returns **APPROVE / REVIEW / REJECT** with the reasons and a dated audit record.
-- **Watch (scheduled)** — keeps a watchlist of your active carriers and re-checks them nightly, alerting the moment one's authority is revoked, insurance lapses, it goes out-of-service, or its safety rating drops.
+- **Vet (on demand):** give it a carrier's MC number and it pulls the live FMCSA record, scores the risk, and returns APPROVE / REVIEW / REJECT with the reasons and a dated audit record.
+- **Watch (scheduled):** keeps a watchlist of your active carriers and re-checks them every night, flagging the moment a carrier's authority is revoked, its insurance lapses, it goes out of service, or its safety rating drops.
 
 Verified live against real carriers:
 
@@ -28,7 +28,7 @@ Verified live against real carriers:
 
 ## Why an agent?
 
-This can't be a single chatbot prompt. CarrierGuard needs **live external data** (FMCSA), pulled **on a schedule**, across **multiple tools**, with a **persistent audit trail** — exactly what an agent provides and a one-shot prompt cannot. The LLM orchestrates and explains; the APPROVE/REVIEW/REJECT decision itself is computed deterministically by a versioned policy (never left to the model).
+This can't be a single chatbot prompt. CarrierGuard needs live external data from FMCSA, pulled on a schedule, across several tools, with a persistent audit trail. That's exactly what an agent gives you and a one-shot prompt can't. The LLM orchestrates and explains, but the APPROVE / REVIEW / REJECT decision itself is computed deterministically by a versioned policy, never left to the model.
 
 ## Architecture
 
@@ -54,7 +54,7 @@ flowchart LR
     WJ -->|"diff vs last baseline"| AL{{"Alerts:<br/>authority lost · insurance lapsed<br/>· out-of-service · safety downgrade"}}
 ```
 
-The risk logic lives in a pure **`core/`** package (no ADK/GCP imports) so it's fast and fully unit-tested; **`app/`** is the thin ADK agent layer; **`mcp_server/`** serves FMCSA lookups over MCP.
+The risk logic lives in a pure `core/` package (no ADK/GCP imports), so it's fast and fully unit-tested. `app/` is the thin ADK agent layer, and `mcp_server/` serves FMCSA lookups over MCP.
 
 ## Course concepts demonstrated
 
