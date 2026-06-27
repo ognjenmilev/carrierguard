@@ -4,7 +4,7 @@
 
 Built for the Google × Kaggle *AI Agents Intensive (Vibe Coding)* capstone · Track: **Agents for Business**
 
-> CarrierGuard supports a broker's carrier due-diligence process. It is informational and **is not legal advice**.
+> CarrierGuard supports a broker’s carrier due-diligence process. It is informational and **is not legal advice**.
 
 ---
 
@@ -12,12 +12,12 @@ Built for the Google × Kaggle *AI Agents Intensive (Vibe Coding)* capstone · T
 
 On May 14, 2026, the U.S. Supreme Court ruled in *Montgomery v. Caribe Transport II* that freight brokers can be sued under state law for negligently hiring an unsafe carrier. The decision stripped away the federal preemption defense brokers had long used to get these claims dismissed. Overnight, roughly 17,000 small U.S. freight brokerages became exposed for who they hire to haul freight, right in the middle of a freight-fraud wave (double-brokering, identity theft).
 
-Brokers' counsel now say every broker needs a written protocol for onboarding each carrier and then monitoring it for as long as it hauls. But the existing tools are carrier-flagging databases, not a broker's own assistant. And per counsel, no single tool does end-to-end vetting, continuous re-verification, and a defensible decision trail in one place. That gap is CarrierGuard.
+Brokers’ counsel now say every broker needs a written protocol for onboarding each carrier and then monitoring it for as long as it hauls. But the existing tools are carrier-flagging databases, not a broker’s own assistant. And per counsel, no single tool does end-to-end vetting, continuous re-verification, and a defensible decision trail in one place. That gap is CarrierGuard.
 
 ## What it does
 
-- **Vet (on demand):** give it a carrier's MC number and it pulls the live FMCSA record, scores the risk, and returns APPROVE / REVIEW / REJECT with the reasons and a dated audit record.
-- **Watch (scheduled):** keeps a watchlist of your active carriers and re-checks them every night, flagging the moment a carrier's authority is revoked, its insurance lapses, it goes out of service, or its safety rating drops.
+- **Vet (on demand):** give it a carrier’s MC number and it pulls the live FMCSA record, scores the risk, and returns APPROVE / REVIEW / REJECT with the reasons and a dated audit record.
+- **Watch (scheduled):** keeps a watchlist of your active carriers and re-checks them every night, flagging the moment a carrier’s authority is revoked, its insurance lapses, it goes out of service, or its safety rating drops.
 
 Verified live against real carriers:
 
@@ -28,7 +28,7 @@ Verified live against real carriers:
 
 ## Why an agent?
 
-This can't be a single chatbot prompt. CarrierGuard needs live external data from FMCSA, pulled on a schedule, across several tools, with a persistent audit trail. That's exactly what an agent gives you and a one-shot prompt can't. The LLM orchestrates and explains, but the APPROVE / REVIEW / REJECT decision itself is computed deterministically by a versioned policy, never left to the model.
+This can’t be a single chatbot prompt. CarrierGuard needs live external data from FMCSA, pulled on a schedule, across several tools, with a persistent audit trail. That’s exactly what an agent gives you and a one-shot prompt can’t. The LLM orchestrates and explains, but the APPROVE / REVIEW / REJECT decision itself is computed deterministically by a versioned policy, never left to the model.
 
 ## Architecture
 
@@ -54,7 +54,7 @@ flowchart LR
     WJ -->|"diff vs last baseline"| AL{{"Alerts:<br/>authority lost · insurance lapsed<br/>· out-of-service · safety downgrade"}}
 ```
 
-The risk logic lives in a pure `core/` package (no ADK/GCP imports), so it's fast and fully unit-tested. `app/` is the thin ADK agent layer, and `mcp_server/` serves FMCSA lookups over MCP.
+The risk logic lives in a pure `core/` package (no ADK/GCP imports), so it’s fast and fully unit-tested. `app/` is the thin ADK agent layer, and `mcp_server/` serves FMCSA lookups over MCP.
 
 ## Course concepts demonstrated
 
@@ -62,7 +62,7 @@ The risk logic lives in a pure `core/` package (no ADK/GCP imports), so it's fas
 |---|---|
 | **Agent (ADK)** | `app/agent.py` — an `LlmAgent` (Gemini via Vertex) orchestrating tools |
 | **MCP Server** | `mcp_server/server.py` — FastMCP server exposing `lookup_carrier`; the agent consumes it over stdio |
-| **Security** | no secrets in code (`.env`, git-ignored), append-only audit log, advisory decisions + "not legal advice" disclaimer |
+| **Security** | no secrets in code (`.env`, git-ignored), append-only audit log, advisory decisions + “not legal advice” disclaimer |
 | **Agents CLI** | scaffolded, run, and deployed with `agents-cli` |
 | **Deployability** | Cloud Run / Agent Runtime + Cloud Scheduler (see *Deployment*) |
 
@@ -125,7 +125,7 @@ Tests run against recorded FMCSA fixtures and injected fetchers, so the suite is
 
 - **No secrets in code.** The WebKey lives in a git-ignored `.env`; deployments use Secret Manager.
 - **Defensible audit trail.** Every decision is written to an append-only SQLite log (the artifact that limits negligent-hiring exposure).
-- **Human-in-the-loop.** Decisions are advisory; the agent never books or rejects on its own, and every output carries the "not legal advice" disclaimer.
+- **Human-in-the-loop.** Decisions are advisory; the agent never books or rejects on its own, and every output carries the “not legal advice” disclaimer.
 
 ## Deployment
 
