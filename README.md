@@ -26,6 +26,29 @@ Verified live against real carriers:
 | Old Dominion Freight Line | 107478 | **APPROVE** | active authority, $1M insurance, Satisfactory |
 | B Swift Transportation | 1217040 | **REJECT** | inactive authority + out-of-service + uninsured (3× HIGH) |
 
+## The web demo
+
+Beyond the agent, CarrierGuard ships a public web app that puts the same vetting engine in front of anyone, with no install and no login. It runs the real `core/` policy on any MC number. There’s no LLM in this path, so the verdict is deterministic and the demo is safe to leave open to the public.
+
+![CarrierGuard web demo](docs/screenshots/demo-hero.png)
+
+**Vet a carrier** — enter any MC number (or pick an example) and get the live decision and a dated audit record.
+
+![Vetting a carrier](docs/screenshots/demo-vet.png)
+
+**Watch** — keep a watchlist of the carriers you’ve booked. Every night CarrierGuard re-checks each one and raises an alert the moment a record worsens: authority revoked, insurance lapsed, out-of-service, or a safety downgrade.
+
+![Watchlist](docs/screenshots/demo-watch.png)
+![Open alerts for a flagged carrier](docs/screenshots/demo-alerts.png)
+
+Run it locally:
+
+```bash
+uvicorn webdemo.main:app --port 8787   # then open http://127.0.0.1:8787
+```
+
+See [`webdemo/`](webdemo) for details and one-command Cloud Run deployment.
+
 ## Why an agent?
 
 This can’t be a single chatbot prompt. CarrierGuard needs live external data from FMCSA, pulled on a schedule, across several tools, with a persistent audit trail. That’s exactly what an agent gives you and a one-shot prompt can’t. The LLM orchestrates and explains, but the APPROVE / REVIEW / REJECT decision itself is computed deterministically by a versioned policy, never left to the model.
@@ -82,6 +105,7 @@ carrierguard/
 ├── app/                   # ADK agent
 │   ├── agent.py           # the CarrierGuard LlmAgent
 │   └── tools.py           # deterministic assess_carrier tool
+├── webdemo/               # Public web app (FastAPI), same core policy, no LLM
 ├── tests/unit/            # 35 tests (pure logic, no network/credentials)
 └── docs/                  # design spec + implementation plan
 ```
@@ -136,6 +160,8 @@ agents-cli scaffold enhance . --deployment-target cloud_run
 agents-cli deploy
 # schedule `python -m core.watch` nightly via Cloud Scheduler
 ```
+
+The public web demo deploys as its own Cloud Run service; see [`webdemo/README.md`](webdemo/README.md).
 
 (Deployment is optional for judging; steps are provided for reproducibility.)
 
