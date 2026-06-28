@@ -2,48 +2,44 @@
 
 *Google × Kaggle AI Agents Intensive (Vibe Coding) · Track: Agents for Business*
 
-## The problem
+Every day, somewhere, a small business owner hands their livelihood to a stranger and hopes they chose well. **CarrierGuard** is for one of those people: the freight broker.
 
-On **May 14, 2026**, the U.S. Supreme Court ruled in *Montgomery v. Caribe Transport* that freight brokers can be sued for **negligent hiring** when a carrier they choose causes a crash. In one decision, roughly 17,000 small U.S. freight brokerages became liable for *which carriers they hand freight to* — and this landed in the middle of a freight-fraud wave of double-brokering and carrier-identity theft.
+A freight broker is a middleman in trucking. A company has goods to move; the broker finds a trucking company to haul them and takes a cut. Think of them as a matchmaker between cargo and trucks. There are tens of thousands of them in the United States, and most are tiny — a few people, sometimes one person working from a kitchen table.
 
-Brokers' attorneys now advise that every broker needs a **written protocol** to vet each carrier at booking *and* monitor it for as long as it's hauling. The catch: the large brokerages have data teams for this; small ones run on spreadsheets. The existing products are carrier-flagging databases — and, per industry counsel, no single tool does end-to-end vetting **plus** continuous re-verification **plus** a defensible, documented decision trail. That is the gap CarrierGuard fills.
+## What changed
 
-## Why an agent
+On May 14, 2026, the rules of that job changed. The U.S. Supreme Court ruled, in *Montgomery v. Caribe Transport II*, that if a broker picks a trucking company that then causes a deadly crash, the broker can be sued for it, even though the broker was never behind the wheel. In a single decision, roughly 17,000 small brokerages became legally responsible for who they hire. And it happened during a wave of fraud, where criminals pose as legitimate trucking companies or quietly pass the load to someone else.
 
-A carrier check is not a one-shot question. It needs **live data** from FMCSA, pulled **on a schedule**, combined across **multiple tools**, and recorded in a **persistent audit trail** that holds up later. A single chatbot prompt can't watch a carrier overnight or prove what it checked. That is precisely the shape of an agent: autonomous, tool-using, stateful. Importantly, CarrierGuard keeps the LLM doing what LLMs are good at — understanding the request, orchestrating tools, explaining the result — while the actual APPROVE/REVIEW/REJECT call is computed deterministically by a versioned policy, never guessed by the model.
+So now every broker is expected to deeply check each trucking company before hiring it, and keep monitoring it for as long as it hauls their freight. The big brokerages have data teams who handle this. The small ones have a spreadsheet and a knot in their stomach.
 
-## The solution
+The information is out there. The U.S. government runs a free public database (FMCSA) that holds every trucking company's license status, insurance, and safety record. But reading it by hand, for every company, every day, is impossible for a small team. That is the gap CarrierGuard fills.
 
-**Vet (on-demand):** give CarrierGuard a carrier's MC number; it pulls the live FMCSA record, scores the risk, and returns **APPROVE / REVIEW / REJECT** with the reasons and a timestamped audit record.
+## What CarrierGuard does
 
-**Watch (scheduled):** it keeps a watchlist of your active carriers and re-checks them nightly, alerting the moment one's operating authority is revoked, its insurance lapses, it's placed out-of-service, or its safety rating drops.
+CarrierGuard is an AI agent that does the checking for you, and never stops. The simplest way to describe it: *a background check on a trucking company that keeps running after you've already hired them.*
 
-Verified live against real carriers: **Old Dominion (MC 107478) → APPROVE**; **B Swift (MC 1217040) → REJECT** on three HIGH flags (inactive authority, out-of-service, uninsured). Priming a "looked fine yesterday" baseline for B Swift and running Watch produced three real change alerts.
+It works in two modes.
 
-## Architecture
+**Vet, on demand.** You give it a trucking company's ID number. In seconds it pulls that company's live federal record, weighs the risk, and gives you a clear verdict — **APPROVE**, **REVIEW**, or **REJECT** — with the reasons spelled out and a dated record saved as proof that you checked.
 
-A single ADK `LlmAgent` (Gemini via Vertex) orchestrates two tools:
-1. **`lookup_carrier`**, served by a **FastMCP server** that wraps the FMCSA QCMobile API — real MCP integration the agent calls over stdio.
-2. **`assess_carrier`**, a deterministic tool that runs fraud heuristics → a versioned scoring policy → an append-only audit record.
+**Watch, automatically.** It keeps a list of the trucking companies you already work with and re-checks them every night. The moment one loses its license, lets its insurance lapse, gets pulled off the road, or has its safety rating downgraded, you get a warning, before you hand them your next load.
 
-The risk logic lives in a pure **`core/`** package with no ADK or GCP imports, so it's fully unit-tested (35 tests) without a network or credentials; **`app/`** is the thin agent layer. Watch mode reuses the same `core/` engine behind a scheduled CLI entrypoint.
+I tried it on real companies. Old Dominion, a large and well-known carrier, came back **APPROVE**: active license, a million dollars of insurance, a clean safety rating. A company called B Swift came back **REJECT**, flagged three times over: no active license, ordered off the road, and no insurance on record. Watching the agent catch that, using live government data, is the moment this stopped being an idea and started feeling real.
 
-## The build journey
+## Why it has to be an agent
 
-Idea selection was its own exercise. In mid-2026, every burning, agent-shaped *marketing* idea I evaluated already had funded products (AI-search visibility, content fact-checking, competitor monitoring, social crisis-response — all checked and ruled out). The one genuinely unbuilt, urgent opportunity was freight-broker carrier monitoring: a six-week-old Supreme Court trigger, no end-to-end incumbent, and a free public data source.
+This could never be a single question typed into a chatbot. It needs live data, pulled on a schedule, from real sources, and written down in a way that holds up months later if a lawyer ever asks what you knew and when. A chatbot can't watch a company overnight or prove what it checked. That is the whole reason it's an agent: it acts on its own, uses real tools, and remembers.
 
-I built it core-first with test-driven development — data models, FMCSA client (against recorded real responses), fraud heuristics, scoring, audit log — all pure and tested before any agent code. Then I wrapped FMCSA as an MCP server, wired the ADK agent, and added scheduled Watch. Every layer was verified against the live FMCSA API.
+One choice I'm proud of: the AI never makes the final call. It reads the request, gathers the data, and explains everything in plain language. But the actual approve-or-reject decision is calculated by fixed rules in code, not guessed by the model. A person's legal safety should not depend on a model's mood. *The AI explains. The rules decide.*
 
-## Concepts demonstrated
+## How it's built
 
-| Concept | Where |
-|---|---|
-| Agent (ADK) | `LlmAgent` orchestrating tools, in `app/agent.py` |
-| MCP Server | `mcp_server/server.py` (FastMCP), consumed by the agent over stdio |
-| Security | secrets in git-ignored `.env`, append-only audit log, advisory decisions + disclaimer |
-| Agents CLI | scaffold / run / deploy via `agents-cli` |
-| Deployability | Cloud Run / Agent Runtime + Cloud Scheduler |
+Under the hood, the decision logic is pure, self-contained code with no dependence on any cloud or AI framework, so it's covered by 35 automated tests that run in about a second. The AI agent is a thin layer on top, built with Google's ADK and Gemini. The link to the government database is wrapped as an MCP server that the agent calls. Security was a first-class concern: no keys in the code, an unchangeable audit log of every decision, and a clear "this is not legal advice" line on every answer. It runs on Google Cloud, with the nightly monitoring on a scheduler. And the data source is completely free and public, so anyone can run this without paying for anything or touching any company's private systems.
 
-## Limitations & next steps
+## What it isn't
 
-Fraud heuristics are decision *signals*, human-confirmed, not automated verdicts; the agent is a due-diligence aid, not legal advice. Natural extensions: pull the FMCSA `/authority` and `/basics` endpoints for richer signals, add a second "advisor" agent for a plain-English recommendation (a true multi-agent system), and wire alert delivery to email/Slack.
+To be honest about the limits: the fraud checks are signals for a human to confirm, not automatic judgments, and the tool is a due-diligence aid, not a lawyer. Where it goes next: deeper signals from the data, a second agent that writes a plain recommendation in human words, and alerts delivered straight to email or Slack.
+
+I keep thinking about that one person at the kitchen table. They didn't ask for this new risk, and they can't afford a team to manage it. CarrierGuard won't make the decision for them. But it can check what they would never have time to check, watch their carriers while they sleep, and keep the kind of record that, on the worst day of their working life, is the difference between a hard phone call and a business that no longer exists.
+
+Thank you for reading, and for taking the time to understand it.
